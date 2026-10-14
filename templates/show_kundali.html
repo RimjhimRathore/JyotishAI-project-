@@ -159,6 +159,23 @@
     background: #bbb;
     border-radius: 10px;
 }
+.print-title { display: none; }
+
+@media print {
+    body { background: #fff !important; color: #000 !important; }
+    .btn, h1, .card.bg-dark { color: #000 !important; }
+    .btn { display: none !important; }
+    .flip-card { height: auto; perspective: none; }
+    .flip-card-inner { transform: none !important; transform-style: flat; height: auto; }
+    .flip-card-front { display: none; }
+    .flip-card-back {
+        position: static; transform: none; backface-visibility: visible;
+        height: auto; overflow: visible; box-shadow: none;
+        border: 1px solid #ccc; margin-bottom: 12px; page-break-inside: avoid;
+    }
+    .print-title { display: block; font-weight: bold; color: #b8860b; margin-bottom: 6px; }
+}
+
 
     </style>
 </head>
@@ -176,6 +193,27 @@
         </div>
     </div>
 
+    <div class="card bg-dark text-light mb-4 text-center">
+    <div class="card-body">
+        Lagna: <b>{{ chart.lagna.sign }}</b> &nbsp;|&nbsp;
+        Moon Sign: <b>{{ chart.planets.Moon.sign }}</b> &nbsp;|&nbsp;
+        Sun Sign: <b>{{ chart.planets.Sun.sign }}</b> &nbsp;|&nbsp;
+        Nakshatra: <b>{{ chart.planets.Moon.nakshatra }}</b> (pada {{ chart.planets.Moon.pada }})
+    </div>
+</div>
+
+<div class="card bg-dark text-light mb-4 text-center">
+    <div class="card-body">
+        <h2 class="grid-title">🪐 Your Kundli Chart</h2>
+        <div class="mx-auto" style="max-width: 420px;">
+            {{ chart_svg|safe }}
+        </div>
+        <p class="small text-secondary mt-2">
+            North Indian style. Numbers are zodiac signs (1 = Aries ... 12 = Pisces).
+            Ra/Ke = Rahu/Ketu, (R) = retrograde.
+        </p>
+    </div>
+</div>
     <!-- ===== Kundali Sections ===== -->
 
 <div class="card-grid">
@@ -192,7 +230,8 @@
         </div>
 
         <!-- BACK -->
-        <div class="flip-card-back">
+       <div class="flip-card-back">
+            <div class="print-title">{{ key }}</div>
             {{ value }}
         </div>
 
@@ -240,11 +279,7 @@
 
     <div class="text-center mt-4">
 
-        <a href="{{ url_for('static', filename='kundali.jpg') }}"
-           download
-           class="btn btn-warning btn-lg">
-           ⬇ Download Kundali
-        </a>
+        <button onclick="window.print()" class="btn btn-warning btn-lg">⬇ Download as PDF</button>
 
         <button onclick="window.print()"
                 class="btn btn-outline-light btn-lg ms-2">

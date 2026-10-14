@@ -1,44 +1,56 @@
-import os 
-from dotenv import load_dotenv 
-load_dotenv() 
-GROK_API_KEY = os.getenv("GROK_API_KEY") 
-from groq import Groq 
-def get_output(dob,time,place): 
-    client = Groq( api_key=GROK_API_KEY, ) 
-    prompt = f"""Act as a professional Vedic astrologer.
+import os
+from dotenv import load_dotenv
+from groq import Groq
 
-Generate a complete Janam Kundali (birth chart) using traditional Vedic astrology based on the following birth details:
+load_dotenv()
+GROK_API_KEY = os.getenv("GROK_API_KEY")   # same .env name you already use
+MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
-Date of Birth: {dob} 
-Time of Birth: {time}
-Place of Birth: {place}
-Provide the analysis under the following headings:
-
-- Ascendant (Lagna) and Rashi
-- Moon Sign and Sun Sign
-- Nakshatra and Pada
-- Manglik Dosha Analysis
-- Planet Strength Analysis
-- Personality Traits
-- Career Indications
-- Marriage and Relationships
+SECTIONS = [
+    "Personality Traits",
+    "Career Indications",
+    "Marriage and Relationships",
+    "Manglik Dosha Analysis",
+    "Planet Strength Analysis",
+    "Finance and Wealth",
+    "Health and Wellbeing",
+]
 
 
-IMPORTANT INSTRUCTIONS:
+def chart_to_text(chart):
+    """Turn the calculated chart into plain text the AI can read."""
+    lagna = chart["lagna"]
+    lines = [f"Lagna (Ascendant): {lagna['sign']} {lagna['degree']}°, "
+             f"{lagna['nakshatra']} pada {lagna['pada']}"]
+    for name, p in chart["planets"].items():
+        retro = " (retrograde)" if p["retrograde"] else ""
+        lines.append(f"{name}: {p['sign']} {p['degree']}°, house {p['house']}, "
+                     f"{p['nakshatra']} pada {p['pada']}{retro}")
+    return "\n".join(lines)
 
-1. Return the result ONLY in valid JSON format.
-2. Do NOT include any explanations, markdown, or extra text.
-3. Each heading must be a JSON key.
-4. The corresponding detailed description must be the value (as a string).
-5. Use clear, human-readable descriptions as values.
-6. Ensure the JSON is properly formatted and parseable.
 
+def get_output(chart):
+    client = Groq(api_key=GROK_API_KEY)
+    keys = ", ".join(f'"{s}"' for s in SECTIONS)
 
+    prompt = f"""You are an expert Vedic (Jyotish) astrologer.
 
-"""
-    chat_completion = client.chat.completions.create( messages=[ { "role": "user", "content": prompt, } ], model="llama-3.3-70b-versatile", ) 
-    return chat_completion.choices[0].message.content 
-if __name__ == "__main__":
-    result = 10
+Below is an ALREADY CALCULATED sidereal (Lahiri) birth chart using whole-sign houses.
+Do NOT recalculate or change any placement. Only interpret what is given.
 
-     
+{chart_to_text(chart)}
+
+For each section, write 4-6 clear sentences in simple language that an ordinary
+person can understand. Base every point on the specific planets, signs and houses
+above, and mention which placement you are using.
+
+Return ONLY a JSON object with exactly these keys: {keys}.
+Each value must be a plain string."""
+
+    resp = client.chat.completions.create(
+        messages=[{"role": "user", "content": prompt}],
+        model=MODEL,
+        response_format={"type": "json_object"},
+        temperature=0.4,
+    )
+    return resp.choices[0].message.content
